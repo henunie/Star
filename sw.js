@@ -1,5 +1,5 @@
 /* sw.js — Service Worker（离线缓存） */
-const CACHE_VERSION = 'leer-star-v11';
+const CACHE_VERSION = 'leer-star-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -13,7 +13,11 @@ const ASSETS = [
   './js/components/shop.js',
   './js/components/profile.js',
   './vendor/vue.global.prod.js',
-  './assets/icon.svg'
+  './assets/icon.svg',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  './assets/icon-180.png',
+  './assets/apple-touch-icon.png'
 ];
 
 // 安装：预缓存 App Shell
