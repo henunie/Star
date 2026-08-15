@@ -116,6 +116,59 @@
         Utils.toast('已重置');
       }
 
+      // ---------- 云同步设置 ----------
+      const showCloud = Vue.ref(false);
+      const authedCloud = Vue.ref(false);
+      const cloudForm = Vue.reactive({
+        binId: Store.getCloudConfig().binId,
+        apiKey: Store.getCloudConfig().apiKey,
+        enabled: Store.getCloudConfig().enabled
+      });
+      const syncStatus = Store.syncStatus;
+
+      const syncStatusPhaseText = Vue.computed(() => {
+        const map = { idle: '未同步', syncing: '同步中', synced: '已同步', error: '同步失败', offline: '离线' };
+        return map[syncStatus.phase] || '未同步';
+      });
+
+      async function toggleCloud() {
+        if (showCloud.value) {
+          showCloud.value = false;
+          authedCloud.value = false;
+          return;
+        }
+        const ok = await Utils.requireAuth('云同步设置 · 管理员验证');
+        if (!ok) { Utils.toast('已取消'); return; }
+        authedCloud.value = true;
+        showCloud.value = true;
+      }
+
+      async function saveCloud() {
+        if (!authedCloud.value) {
+          const ok = await Utils.requireAuth('云同步设置 · 管理员验证');
+          if (!ok) { Utils.toast('已取消'); return; }
+          authedCloud.value = true;
+        }
+        const wasEnabled = Store.getCloudConfig().enabled;
+        Store.setCloudConfig({
+          binId: cloudForm.binId.trim(),
+          apiKey: cloudForm.apiKey.trim(),
+          enabled: cloudForm.enabled
+        });
+        Utils.toast('云同步配置已保存');
+        // 从关 → 开，且配置齐全 → 触发首次同步
+        if (!wasEnabled && cloudForm.enabled && cloudForm.binId.trim() && cloudForm.apiKey.trim()) {
+          Store.enableCloud()
+            .then(() => Utils.toast('云同步已启用'))
+            .catch(() => Utils.toast('启用失败，请检查 Bin ID / API Key'));
+        }
+      }
+
+      async function syncNow() {
+        await Store.syncNow();
+        Utils.toast(syncStatus.phase === 'synced' ? '同步完成' : '同步失败，请检查配置');
+      }
+
       const txIcon = (tx) => Utils.sourceIcon(tx.source);
 
       return {
@@ -135,7 +188,15 @@
         saveSettings,
         resetAll,
         txIcon,
-        Utils
+        Utils,
+        showCloud,
+        authedCloud,
+        cloudForm,
+        syncStatus,
+        syncStatusPhaseText,
+        toggleCloud,
+        saveCloud,
+        syncNow
       };
     },
     template: `
@@ -252,13 +313,44 @@
         </div>
 
         <div class="card">
+          <div class="collapse-trigger" :class="{ open: showCloud }" @click="toggleCloud">
+            <span>☁️ 云同步设置<span v-if="cloudForm.enabled" style="font-size:12px;margin-left:6px;color:var(--text-mute)">· {{ syncStatusPhaseText }}</span></span>
+            <span class="arrow">⌄</span>
+          </div>
+          <div v-if="showCloud" style="margin-top:14px">
+            <div class="setting-row">
+              <span class="setting-label">Bin ID</span>
+              <input class="setting-input" v-model="cloudForm.binId" placeholder="粘贴 JSONBin Bin ID" style="flex:1">
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">API Key</span>
+              <input class="setting-input" type="password" v-model="cloudForm.apiKey" placeholder="X-Master-Key" style="flex:1">
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">启用云同步</span>
+              <input type="checkbox" v-model="cloudForm.enabled">
+            </div>
+            <div v-if="cloudForm.enabled" style="font-size:12px;color:var(--text-mute);margin:8px 0">
+              状态：{{ syncStatusPhaseText }}
+            </div>
+            <div v-if="cloudForm.enabled" style="font-size:11px;color:var(--text-mute);margin-bottom:10px">
+              所有登录者共享同一份数据，刷新即可看到他人改动。
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary" style="flex:1" @click="saveCloud">保存配置</button>
+              <button class="btn btn-ghost" @click="syncNow" :disabled="syncStatus.phase==='syncing'">立即同步</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title">⚠️ 危险操作</div>
           <button class="btn btn-danger btn-block" @click="resetAll">重置所有数据</button>
           <div style="font-size:12px;color:var(--text-mute);margin-top:8px;text-align:center">将清空所有星星、任务、记录，不可恢复</div>
         </div>
 
         <div style="text-align:center;color:var(--text-mute);font-size:12px;padding:10px 0 20px">
-          ⭐ 星迹 v1.0 · 本地存储
+          ⭐ 星迹 v1.0 · {{ cloudForm.enabled ? '云端同步' : '本地存储' }}
         </div>
 
         <div v-if="showAdjustModal" class="modal-mask" @click.self="closeAdjust">
