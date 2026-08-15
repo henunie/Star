@@ -1,5 +1,5 @@
 /* sw.js — Service Worker（离线缓存） */
-const CACHE_VERSION = 'leer-star-v12';
+const CACHE_VERSION = 'leer-star-v13';
 const ASSETS = [
   './',
   './index.html',
