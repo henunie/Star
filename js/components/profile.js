@@ -118,7 +118,6 @@
 
       // ---------- 云同步设置 ----------
       const showCloud = Vue.ref(false);
-      const authedCloud = Vue.ref(false);
       const cloudForm = Vue.reactive({
         binId: Store.getCloudConfig().binId,
         apiKey: Store.getCloudConfig().apiKey,
@@ -131,24 +130,11 @@
         return map[syncStatus.phase] || '未同步';
       });
 
-      async function toggleCloud() {
-        if (showCloud.value) {
-          showCloud.value = false;
-          authedCloud.value = false;
-          return;
-        }
-        const ok = await Utils.requireAuth('云同步设置 · 管理员验证');
-        if (!ok) { Utils.toast('已取消'); return; }
-        authedCloud.value = true;
-        showCloud.value = true;
+      function toggleCloud() {
+        showCloud.value = !showCloud.value;
       }
 
       async function saveCloud() {
-        if (!authedCloud.value) {
-          const ok = await Utils.requireAuth('云同步设置 · 管理员验证');
-          if (!ok) { Utils.toast('已取消'); return; }
-          authedCloud.value = true;
-        }
         const wasEnabled = Store.getCloudConfig().enabled;
         Store.setCloudConfig({
           binId: cloudForm.binId.trim(),
@@ -190,7 +176,6 @@
         txIcon,
         Utils,
         showCloud,
-        authedCloud,
         cloudForm,
         syncStatus,
         syncStatusPhaseText,
